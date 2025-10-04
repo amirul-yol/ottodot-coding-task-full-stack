@@ -27,6 +27,12 @@
   - Simplified `/api/math-problem/route.ts` to handle only problem generation
   - Follows Next.js App Router best practices for multiple operations
 
+- **AI Integration Issues** - Added comprehensive debugging and improved JSON parsing
+  - Added detailed logging to see raw AI responses for troubleshooting
+  - Enhanced JSON parsing to handle markdown code blocks and mixed content
+  - Improved AI prompt with explicit JSON format requirements
+  - Added fallback problem system when AI fails completely
+
 ### Added
 - **Frontend Logic Implementation** (`app/page.tsx`)
   - Implemented `generateProblem()` function with comprehensive error handling

@@ -81,18 +81,22 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
 
   // Create a detailed prompt for the AI
   // WHY THIS PROMPT? Specifies age group, math level, and exact JSON format needed
+  // NOTE: This is a diagnostic version to troubleshoot AI response issues
   const prompt = `
     Generate a math word problem suitable for Primary 5 students (10-11 years old).
     The problem should involve basic arithmetic operations like addition, subtraction, multiplication, or division.
     Make it engaging and relatable for children.
 
-    IMPORTANT: Return your response in this exact JSON format:
+    CRITICAL REQUIREMENTS:
+    - Respond with ONLY a valid JSON object
+    - Do NOT include any explanations, markdown, or extra text
+    - Do NOT wrap in code blocks
+    - Format MUST be exactly:
+
     {
       "problem_text": "A bakery sold 45 cupcakes in the morning and 32 cupcakes in the afternoon. How many cupcakes did they sell in total?",
       "final_answer": 77
     }
-
-    Do not include any other text or explanation, just the JSON.
   `;
 
   try {
@@ -102,26 +106,74 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
     const aiResponse = await result.response;
     const text = aiResponse.text();
 
-    // Parse the AI response as JSON
+    // DEBUG: Log the raw AI response for troubleshooting
+    console.log('=== AI DEBUG INFO ===');
+    console.log('Raw AI Response:', text);
+    console.log('Response Length:', text.length);
+    console.log('===================');
+
+    // Parse the AI response as JSON with enhanced error handling
     // WHY try-catch? AI might not always return perfect JSON format
     let parsedAIResponse;
     try {
+      // First, try direct JSON parsing
       parsedAIResponse = JSON.parse(text);
+      console.log('✅ Successfully parsed JSON directly');
     } catch (parseError) {
-      // If AI doesn't return valid JSON, provide a fallback problem
-      // WHY? Ensures the application always works, even if AI fails
-      console.warn('AI returned invalid JSON, using fallback:', text);
-      parsedAIResponse = {
-        problem_text: "Sarah has 25 apples. She gives 10 apples to her friend. How many apples does Sarah have left?",
-        final_answer: 15
-      };
+      console.log('❌ Direct JSON parsing failed, trying alternative methods...');
+
+      // Try to extract JSON from markdown code blocks
+      let jsonText = text.trim();
+
+      // Remove markdown code block markers if present
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/```json\s*|\s*```/g, '');
+        console.log('🔧 Removed markdown json code block markers');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/```\s*|\s*```/g, '');
+        console.log('🔧 Removed generic markdown code block markers');
+      }
+
+      // Try to find JSON object in the text (in case AI added extra text)
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
+        console.log('🔧 Extracted JSON object from mixed content');
+      }
+
+      console.log('Attempting to parse cleaned JSON:', jsonText);
+
+      try {
+        parsedAIResponse = JSON.parse(jsonText);
+        console.log('✅ Successfully parsed cleaned JSON');
+      } catch (secondParseError) {
+        console.error('❌ All JSON parsing attempts failed');
+        console.error('Original text:', text);
+        console.error('Cleaned text:', jsonText);
+        console.error('Parse error:', secondParseError);
+
+        // Log the issue for debugging, but provide a fallback problem
+        console.error('🚨 AI JSON parsing completely failed - using fallback problem');
+        console.error('Raw AI response:', text);
+        console.error('Parse error:', secondParseError.message);
+
+        // Use fallback problem so the app still works
+        parsedAIResponse = {
+          problem_text: "Sarah has 25 apples. She gives 10 apples to her friend. How many apples does Sarah have left?",
+          final_answer: 15
+        };
+      }
     }
 
     // Validate that we have the required fields
     // WHY? Prevents runtime errors if AI response is malformed
     if (!parsedAIResponse.problem_text || typeof parsedAIResponse.final_answer !== 'number') {
+      console.error('❌ Parsed response missing required fields:', parsedAIResponse);
       throw new Error('Invalid AI response format');
     }
+
+    // If we get here, the AI worked! Log success
+    console.log('✅ Successfully generated problem from AI:', parsedAIResponse.problem_text.substring(0, 50) + '...');
 
     // Save the problem to the database
     // WHY? Persists data for tracking and allows multiple attempts per problem
