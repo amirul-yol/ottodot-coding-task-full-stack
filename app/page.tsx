@@ -15,17 +15,162 @@ export default function Home() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
 
+  /**
+   * Generates a new math problem using AI
+   *
+   * HOW IT WORKS:
+   * 1. Makes a POST request to /api/math-problem to generate a new problem
+   * 2. API uses Google Gemini AI to create a Primary 5 level math word problem
+   * 3. Problem is automatically saved to database by the API
+   * 4. Updates local state with the new problem and session ID
+   *
+   * WHY THIS APPROACH?
+   * - Separates frontend concerns (UI state) from backend logic (AI generation)
+   * - Uses async/await for cleaner error handling than promise chains
+   * - Resets previous feedback and answer when generating new problem
+   * - Shows loading state to prevent multiple simultaneous requests
+   *
+   * ERROR HANDLING STRATEGY:
+   * - Try-catch for network errors or API failures
+   * - Console logging for debugging (visible in browser dev tools)
+   * - Loading state automatically cleared on error
+   * - User sees no error message (graceful degradation)
+   */
   const generateProblem = async () => {
-    // TODO: Implement problem generation logic
-    // This should call your API route to generate a new problem
-    // and save it to the database
+    // Set loading state to true immediately to prevent multiple rapid clicks
+    // WHY? Users might click button multiple times quickly, causing duplicate requests
+    setIsLoading(true);
+
+    try {
+      // Make API call to generate new problem
+      // WHY POST method? Creating a new resource (problem session)
+      // WHY no request body? AI generates random problems, no parameters needed
+      const response = await fetch('/api/math-problem', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // No body needed - AI generates random problems
+        },
+      });
+
+      // Check if the API call was successful
+      // WHY? Network errors or server issues should be handled gracefully
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      // Parse the JSON response from the API
+      // WHY await? Response.json() returns a Promise
+      const data = await response.json();
+
+      // Update state with the new problem and session information
+      // WHY? Frontend needs to display the problem and track which session this is for submissions
+      setProblem(data.problem);
+      setSessionId(data.sessionId);
+
+      // Clear previous feedback and user input when generating new problem
+      // WHY? Prevents confusion from old feedback showing with new problem
+      setFeedback('');
+      setUserAnswer('');
+      setIsCorrect(null);
+
+    } catch (error) {
+      // Handle any errors during the API call
+      // WHY console.error? Helps with debugging in browser dev tools
+      // WHY no user-facing error? Keeps UI clean, assumes graceful degradation
+      console.error('Failed to generate problem:', error);
+
+      // Future enhancement: Could add user-facing error message here
+      // For now, we silently fail and let user try again
+
+    } finally {
+      // Always clear loading state when done (success or failure)
+      // WHY? Ensures button becomes clickable again
+      setIsLoading(false);
+    }
   }
 
+  /**
+   * Submits the user's answer and gets AI-generated feedback
+   *
+   * HOW IT WORKS:
+   * 1. Prevents default form submission behavior
+   * 2. Sends user's answer and session ID to /api/math-problem/submit
+   * 3. API compares answer with correct answer and generates feedback using AI
+   * 4. Updates UI with feedback and correctness status
+   *
+   * WHY THIS APPROACH?
+   * - e.preventDefault() prevents page reload on form submission
+   * - Validates session exists before making API call (user must generate problem first)
+   * - Converts string input to number for proper comparison
+   * - Updates multiple state variables to show comprehensive feedback
+   *
+   * FORM VALIDATION STRATEGY:
+   * - Button already disabled if userAnswer is empty (handled in JSX)
+   * - Additional check prevents submission without active session
+   * - Number conversion ensures proper data type for API
+   */
   const submitAnswer = async (e: React.FormEvent) => {
-    e.preventDefault()
-    // TODO: Implement answer submission logic
-    // This should call your API route to check the answer,
-    // save the submission, and generate feedback
+    // Prevent default form submission (page reload)
+    // WHY? We want to handle submission with JavaScript for better UX
+    e.preventDefault();
+
+    // Validate that we have a session ID (user must generate a problem first)
+    // WHY? Prevents API calls without context, ensures data integrity
+    if (!sessionId) {
+      console.error('No active session - user must generate a problem first');
+      return;
+    }
+
+    // Set loading state to prevent multiple submissions
+    // WHY? Users might click submit multiple times quickly
+    setIsLoading(true);
+
+    try {
+      // Prepare request body with session ID and user's answer
+      // WHY parseInt? Converts string input to number for proper comparison
+      const requestBody = {
+        sessionId: sessionId,
+        userAnswer: parseInt(userAnswer), // Convert string to number
+      };
+
+      // Make API call to submit answer and get feedback
+      // WHY POST method? Creating a new submission record
+      const response = await fetch('/api/math-problem/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      // Check if API call was successful
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      // Parse the response containing feedback and correctness
+      const data = await response.json();
+
+      // Update UI state with feedback results
+      // WHY? Shows user whether they were correct and provides learning feedback
+      setFeedback(data.feedback);
+      setIsCorrect(data.isCorrect);
+
+      // Note: We don't clear userAnswer here - user might want to see what they entered
+      // They'll need to generate a new problem to continue
+
+    } catch (error) {
+      // Handle errors during submission
+      console.error('Failed to submit answer:', error);
+
+      // Future enhancement: Could show user-friendly error message
+      // For now, we silently fail and let user try again
+
+    } finally {
+      // Always clear loading state when done
+      setIsLoading(false);
+    }
   }
 
   return (
