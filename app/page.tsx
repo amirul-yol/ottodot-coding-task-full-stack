@@ -14,6 +14,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   /**
    * Generates a new math problem using AI
@@ -68,20 +69,21 @@ export default function Home() {
       setProblem(data.problem);
       setSessionId(data.sessionId);
 
-      // Clear previous feedback and user input when generating new problem
+      // Clear previous feedback, user input, and any error messages when generating new problem
       // WHY? Prevents confusion from old feedback showing with new problem
       setFeedback('');
       setUserAnswer('');
       setIsCorrect(null);
+      setError(null); // Clear any previous errors on successful generation
 
     } catch (error) {
       // Handle any errors during the API call
       // WHY console.error? Helps with debugging in browser dev tools
-      // WHY no user-facing error? Keeps UI clean, assumes graceful degradation
       console.error('Failed to generate problem:', error);
 
-      // Future enhancement: Could add user-facing error message here
-      // For now, we silently fail and let user try again
+      // Show user-friendly error message instead of silent failure
+      // WHY? Users should know when operations fail so they can retry or troubleshoot
+      setError('Failed to generate problem. Please check your connection and try again.');
 
     } finally {
       // Always clear loading state when done (success or failure)
@@ -156,6 +158,7 @@ export default function Home() {
       // WHY? Shows user whether they were correct and provides learning feedback
       setFeedback(data.feedback);
       setIsCorrect(data.isCorrect);
+      setError(null); // Clear any previous errors on successful submission
 
       // Note: We don't clear userAnswer here - user might want to see what they entered
       // They'll need to generate a new problem to continue
@@ -164,8 +167,9 @@ export default function Home() {
       // Handle errors during submission
       console.error('Failed to submit answer:', error);
 
-      // Future enhancement: Could show user-friendly error message
-      // For now, we silently fail and let user try again
+      // Show user-friendly error message instead of silent failure
+      // WHY? Users should know when operations fail so they can retry or troubleshoot
+      setError('Failed to submit answer. Please try again.');
 
     } finally {
       // Always clear loading state when done
@@ -189,6 +193,12 @@ export default function Home() {
             {isLoading ? 'Generating...' : 'Generate New Problem'}
           </button>
         </div>
+
+        {error && (
+          <div className="px-4 py-3 mb-4">
+            {error}
+          </div>
+        )}
 
         {problem && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
