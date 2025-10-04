@@ -3,11 +3,10 @@
 ## [Unreleased]
 
 ### Added
-- **API Routes Implementation** (`app/api/math-problem/route.ts`)
-  - Created comprehensive API route handler for math problem operations
-  - Implemented POST `/api/math-problem` for problem generation using Google Gemini AI
-  - Implemented POST `/api/math-problem/submit` for answer submission and AI feedback generation
-  - Added detailed error handling and logging for debugging purposes
+- **API Routes Implementation**
+  - **Problem Generation** (`app/api/math-problem/route.ts`) - Dedicated endpoint for AI-powered math problem generation
+  - **Answer Submission** (`app/api/math-problem/submit/route.ts`) - Separate endpoint for answer submission and AI feedback
+  - Both endpoints use Google Gemini 2.0 Flash model with comprehensive error handling
 
 ### Technical Details
 - **AI Integration**: Used Google Gemini 2.0 Flash model for problem generation and feedback (updated from deprecated gemini-pro)
@@ -21,6 +20,12 @@
   - Fixed 404 error when generating math problems
   - Ensures compatibility with current Google AI API
   - Maintains same functionality with updated model
+
+- **API Route Structure** - Restructured API endpoints for proper Next.js App Router support
+  - Fixed 404 error when submitting answers
+  - Created separate `/api/math-problem/submit/route.ts` for answer submission
+  - Simplified `/api/math-problem/route.ts` to handle only problem generation
+  - Follows Next.js App Router best practices for multiple operations
 
 ### Added
 - **Frontend Logic Implementation** (`app/page.tsx`)

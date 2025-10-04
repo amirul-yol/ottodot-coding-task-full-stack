@@ -1,17 +1,15 @@
 /**
  * API Route: /api/math-problem
  *
- * This file handles two main operations:
- * 1. POST - Generate a new math problem using Google Gemini AI
- * 2. POST /submit - Submit an answer and get AI-generated feedback
+ * This file handles math problem generation using Google Gemini AI.
  *
  * WHY THIS STRUCTURE?
  * - Next.js 13+ App Router uses route.ts files for API endpoints
- * - Single file handles both operations to keep things organized
- * - Separates generation and submission logic clearly
+ * - Dedicated endpoint for problem generation with clear separation of concerns
+ * - Submission logic moved to /api/math-problem/submit for better organization
  *
  * DEPENDENCIES EXPLAINED:
- * - @google/generative-ai: For AI-powered problem generation and feedback
+ * - @google/generative-ai: For AI-powered problem generation
  * - @supabase/supabase-js: For database operations
  * - Database types from our custom types file for type safety
  */
@@ -37,15 +35,6 @@ interface GenerateProblemResponse {
   sessionId: string;
 }
 
-interface SubmitAnswerRequest {
-  sessionId: string;
-  userAnswer: number;
-}
-
-interface SubmitAnswerResponse {
-  isCorrect: boolean;
-  feedback: string;
-}
 
 /**
  * POST /api/math-problem - Generate a new math problem
@@ -63,16 +52,9 @@ interface SubmitAnswerResponse {
  */
 export async function POST(request: Request) {
   try {
-    // Check if this is a submission request by looking at the URL
-    // WHY? Next.js App Router uses a single file for multiple operations
-    const url = new URL(request.url);
-    const isSubmission = url.pathname.endsWith('/submit');
-
-    if (isSubmission) {
-      return await handleSubmitAnswer(request);
-    } else {
-      return await handleGenerateProblem(request);
-    }
+    // Handle problem generation directly
+    // WHY? This route is now dedicated to problem generation only
+    return await handleGenerateProblem(request);
   } catch (error) {
     // Comprehensive error handling with detailed logging
     // WHY? Helps with debugging and provides meaningful error messages
@@ -183,103 +165,3 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
   }
 }
 
-/**
- * Handles the answer submission and feedback generation
- * WHY SEPARATE FUNCTION? Complex logic that deserves its own function
- */
-async function handleSubmitAnswer(request: Request): Promise<Response> {
-  try {
-    // Parse the request body to get session ID and user answer
-    // WHY async text()? Request body is a readable stream that needs to be consumed
-    const body: SubmitAnswerRequest = await request.json();
-
-    if (!body.sessionId || typeof body.userAnswer !== 'number') {
-      // Validate required fields
-      // WHY? Prevents processing incomplete or malformed requests
-      return Response.json(
-        { error: 'Missing required fields: sessionId and userAnswer' },
-        { status: 400 }
-      );
-    }
-
-    // Fetch the original problem from database using session ID
-    // WHY? Need the correct answer and original problem text for comparison and feedback
-    const { data: session, error: fetchError } = await supabase
-      .from('math_problem_sessions')
-      .select('*')
-      .eq('id', body.sessionId)
-      .single();
-
-    if (fetchError || !session) {
-      // Handle case where session ID doesn't exist
-      console.error('Session not found:', fetchError);
-      return Response.json(
-        { error: 'Problem session not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check if the user's answer is correct
-    // WHY? Simple numeric comparison for accuracy
-    const isCorrect = body.userAnswer === session.correct_answer;
-
-    // Create a prompt for AI feedback generation
-    // WHY THIS PROMPT? Provides context for personalized, educational feedback
-    const feedbackPrompt = `
-      Original problem: ${session.problem_text}
-      Correct answer: ${session.correct_answer}
-      User's answer: ${body.userAnswer}
-      Was the user correct? ${isCorrect ? 'Yes' : 'No'}
-
-      Generate personalized feedback that:
-      - ${isCorrect ? 'Praises the user and reinforces the correct method' : 'Explains the correct solution step by step'}
-      - Helps the user understand the math concept
-      - Encourages continued learning
-      - Keeps a friendly, supportive tone suitable for Primary 5 students
-
-      Keep the feedback concise but helpful (2-3 sentences).
-    `;
-
-    // Generate AI feedback
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const feedbackResult = await model.generateContent(feedbackPrompt);
-    const feedbackResponse = await feedbackResult.response;
-    const feedbackText = feedbackResponse.text().trim();
-
-    // Save the submission to database
-    // WHY? Tracks user progress and stores feedback for future reference
-    const { error: submitError } = await supabase
-      .from('math_problem_submissions')
-      .insert({
-        session_id: body.sessionId,
-        user_answer: body.userAnswer,
-        is_correct: isCorrect,
-        feedback_text: feedbackText,
-      });
-
-    if (submitError) {
-      // Handle database errors during submission
-      console.error('Error saving submission:', submitError);
-      // Don't fail the request if feedback generation worked but saving failed
-    }
-
-    // Return successful response
-    const response: SubmitAnswerResponse = {
-      isCorrect,
-      feedback: feedbackText,
-    };
-
-    return Response.json(response, { status: 201 });
-
-  } catch (error) {
-    // Handle any errors during submission processing
-    console.error('Error submitting answer:', error);
-    return Response.json(
-      {
-        error: 'Failed to submit answer',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  }
-}
