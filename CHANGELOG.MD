@@ -40,6 +40,24 @@
   - Fixed error display styling with functional Tailwind utility classes
 
 ### Added
+- **Background Image & Visual Enhancements** - Modern, polished UI design
+  - Implemented classroom-themed background from `public/images/background.jpg`
+  - Added medium blur (backdrop-blur-md) and 40% dark overlay for visual comfort
+  - Enhanced title with vibrant gradient (blue → purple → pink) and text transparency effect
+  - Implemented responsive title sizing (3xl mobile, 4xl tablet, 5xl desktop)
+  - Unified all content in single white container with glass morphism effect
+  - Vertically centered layout for better visual balance
+  - Added divider below title for better visual hierarchy
+  - Added initial "Generate New Problem" button for first-time load
+  - Repositioned action buttons side-by-side (Generate + Submit) for space efficiency
+  - Implemented responsive button layout (stacked on mobile, side-by-side on desktop)
+  - Added gradient buttons with hover animations and scale transforms
+  - Implemented rounded-3xl corners for modern aesthetic
+  - Added emojis to buttons and headings for engaging, playful design
+  - Enhanced form inputs with larger padding and rounded corners
+  - Improved feedback cards with gradient backgrounds and section dividers
+  - Added smooth transitions and hover effects throughout (300ms duration)
+
 - **Hint System** - AI-generated hints for student assistance
   - Added `hint` column to `math_problem_sessions` database table
   - Updated AI prompt to generate simple, contextual hints with each problem
@@ -50,6 +68,11 @@
   - Updated TypeScript types across database schema, API routes, and frontend
 
 ### Fixed
+- **Text Visibility Issues** - Fixed input and feedback text colors
+  - Changed answer input text color to gray-900 for proper visibility
+  - Updated feedback section text colors (heading and body) to gray-900
+  - Ensures all user input and feedback is clearly visible
+
 - **Hint Display Bug** - Fixed hint not appearing in frontend
   - Added hint field to API response payload (was only saved to database)
   - Hint now properly passed from backend to frontend for display

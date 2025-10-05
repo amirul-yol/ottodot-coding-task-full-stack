@@ -181,90 +181,130 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-          Math Problem Generator
-        </h1>
-        
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <button
-            onClick={generateProblem}
-            disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg transition duration-200 ease-in-out transform hover:scale-105"
-          >
-            {isLoading ? 'Generating...' : 'Generate New Problem'}
-          </button>
-        </div>
+    <div 
+      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: "url('/images/background.jpg')" }}
+    >
+      {/* Blur and overlay effect for background - increased opacity for comfort */}
+      <div 
+        className="absolute inset-0 backdrop-blur-md bg-black/40"
+        style={{ zIndex: 0 }}
+      ></div>
 
-        {error && (
-          <div className="px-4 py-3 mb-4">
-            {error}
-          </div>
-        )}
+      <main className="container mx-auto px-4 py-8 max-w-3xl relative flex items-center justify-center min-h-screen" style={{ zIndex: 1 }}>
+        {/* Single unified container with all content */}
+        <div className="w-full bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-white/20">
+          {/* Fancy title with gradient and shadow - responsive font size */}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent drop-shadow-lg">
+            Math Problem Generator
+          </h1>
 
-        {problem && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-700">Problem:</h2>
-            <p className="text-lg text-gray-800 leading-relaxed mb-6">
+          {/* Divider after title */}
+          <div className="border-t-2 border-gray-100 mb-6"></div>
+
+          {/* Generate button - shown when no problem exists */}
+          {!problem && (
+            <div className="mb-6">
+              <button
+                onClick={generateProblem}
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
+              >
+                {isLoading ? '✨ Generating...' : '🎲 Generate New Problem'}
+              </button>
+            </div>
+          )}
+
+          {/* Error display */}
+          {error && (
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6">
+              <p className="font-semibold">⚠️ {error}</p>
+            </div>
+          )}
+
+          {/* Problem display section */}
+          {problem && (
+            <div className="border-t-2 border-gray-100 pt-6 mt-6">
+            <h2 className="text-2xl font-bold mb-4 text-transparent bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text">
+              ❓ Problem:
+            </h2>
+            <p className="text-lg text-gray-800 leading-relaxed mb-6 font-medium">
               {problem.problem_text}
             </p>
 
             {/* Hint Button - Only show if hint is available */}
             {problem.hint && (
-              <div className="mb-4">
+              <div className="mb-6">
                 {!showHint ? (
                   <button
                     onClick={() => setShowHint(true)}
                     type="button"
-                    className="text-amber-600 hover:text-amber-700 font-medium text-sm flex items-center gap-1"
+                    className="text-amber-600 hover:text-amber-700 font-semibold text-sm flex items-center gap-2 transition duration-200 hover:gap-3"
                   >
                     💡 Need Help? Show Hint
                   </button>
                 ) : (
-                  <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-amber-800 mb-1">💡 Hint</p>
-                    <p className="text-sm text-amber-900">{problem.hint}</p>
+                  <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-xl p-5 shadow-md">
+                    <p className="text-sm font-bold text-amber-800 mb-2">💡 Hint</p>
+                    <p className="text-sm text-amber-900 leading-relaxed">{problem.hint}</p>
                   </div>
                 )}
               </div>
             )}
             
-            <form onSubmit={submitAnswer} className="space-y-4">
+            <form onSubmit={submitAnswer} className="space-y-5">
               <div>
-                <label htmlFor="answer" className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Answer:
+                <label htmlFor="answer" className="block text-base font-bold text-gray-700 mb-3">
+                  ✍️ Your Answer:
                 </label>
                 <input
                   type="number"
                   id="answer"
                   value={userAnswer}
                   onChange={(e) => setUserAnswer(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-5 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-lg font-medium text-gray-900"
                   placeholder="Enter your answer"
                   required
                 />
               </div>
               
-              <button
-                type="submit"
-                disabled={!userAnswer || isLoading}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg transition duration-200 ease-in-out transform hover:scale-105"
-              >
-                Submit Answer
-              </button>
+              {/* Action buttons - responsive: stacked on mobile, side-by-side on desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={generateProblem}
+                  disabled={isLoading}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
+                >
+                  {isLoading ? '✨ Generating...' : '🎲 New Problem'}
+                </button>
+                
+                <button
+                  type="submit"
+                  disabled={!userAnswer || isLoading}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
+                >
+                  {isLoading ? '⏳ Checking...' : '✅ Submit Answer'}
+                </button>
+              </div>
             </form>
-          </div>
-        )}
+            </div>
+          )}
 
-        {feedback && (
-          <div className={`rounded-lg shadow-lg p-6 ${isCorrect ? 'bg-green-50 border-2 border-green-200' : 'bg-yellow-50 border-2 border-yellow-200'}`}>
-            <h2 className="text-xl font-semibold mb-4 text-gray-700">
-              {isCorrect ? '✅ Correct!' : '❌ Not quite right'}
-            </h2>
-            <p className="text-gray-800 leading-relaxed">{feedback}</p>
-          </div>
-        )}
+          {/* Feedback section */}
+          {feedback && (
+            <div className={`border-t-2 border-gray-100 pt-6 mt-6 rounded-xl p-6 ${
+              isCorrect 
+                ? 'bg-gradient-to-br from-green-50 to-emerald-50' 
+                : 'bg-gradient-to-br from-yellow-50 to-amber-50'
+            }`}>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900">
+                {isCorrect ? '🎉 Correct! Amazing!' : '🤔 Not quite right'}
+              </h2>
+              <p className="text-gray-900 leading-relaxed text-lg font-medium">{feedback}</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )
