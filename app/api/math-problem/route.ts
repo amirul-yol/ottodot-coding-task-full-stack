@@ -31,6 +31,7 @@ interface GenerateProblemResponse {
   problem: {
     problem_text: string;
     final_answer: number;
+    hint?: string; // Optional hint for helping students
   };
   sessionId: string;
 }
