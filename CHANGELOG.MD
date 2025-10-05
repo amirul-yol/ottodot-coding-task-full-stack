@@ -3,6 +3,34 @@
 ## [Unreleased]
 
 ### Added
+- **Timer and Star Rating System** - Gamified performance tracking for engagement
+  - Added `time_taken_seconds` and `stars_earned` columns to `math_problem_submissions` table
+  - Implemented real-time timer that starts when problem is displayed
+  - Timer stops when "Submit Answer" is clicked
+  - Timer resets to 0 when generating new problem
+  - Format: Shows seconds (<60s), then switches to M:SS format
+  - **Star Rating Logic** - Difficulty-based performance thresholds:
+    - **Easy**: ⭐⭐⭐ <30s | ⭐⭐ 30-60s | ⭐ >60s
+    - **Medium**: ⭐⭐⭐ <60s | ⭐⭐ 60-120s | ⭐ >120s
+    - **Hard**: ⭐⭐⭐ <120s | ⭐⭐ 120-180s | ⭐ >180s
+  - Stars only awarded for correct answers (no stars for incorrect)
+  - No penalty for using hints (encourages learning)
+  - **Timer Display** - Always visible near problem heading
+    - Small, unobtrusive design with gray background
+    - Monospace font for better readability
+    - Clock emoji (⏱️) for visual clarity
+  - **Stars Display in Feedback Modal** - Animated celebration
+    - Large star emojis (⭐) with glow effect for earned stars
+    - Grayed out stars for unearned ones
+    - Staggered pulse animation for visual appeal
+    - Gold drop-shadow effect for earned stars
+    - Time display below stars showing total time taken
+  - Updated TypeScript types across database schema, API routes, and frontend
+  - Backend calculates and saves stars based on difficulty thresholds
+  - Frontend sends time to API, receives validation
+  - Performance metrics stored in database for progress tracking
+
+### Added
 - **Difficulty & Topic Selection** - Customizable problem generation for personalized learning
   - Added `difficulty` column to `math_problem_sessions` table (easy, medium, hard)
   - Added `topic` column to `math_problem_sessions` table (addition, subtraction, multiplication, division, random)

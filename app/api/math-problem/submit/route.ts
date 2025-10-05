@@ -26,6 +26,7 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 interface SubmitAnswerRequest {
   sessionId: string;
   userAnswer: number;
+  timeTakenSeconds?: number;
 }
 
 interface SubmitAnswerResponse {
@@ -86,6 +87,23 @@ export async function POST(request: Request) {
     // WHY? Simple numeric comparison for accuracy
     const isCorrect = body.userAnswer === session.correct_answer;
 
+    // Calculate stars if answer is correct and time is provided
+    // WHY? Rewards both speed and accuracy for better engagement
+    let starsEarned = 0;
+    if (isCorrect && body.timeTakenSeconds !== undefined) {
+      const difficulty = session.difficulty as 'easy' | 'medium' | 'hard' || 'medium';
+      const thresholds = {
+        easy: { three: 30, two: 60 },
+        medium: { three: 60, two: 120 },
+        hard: { three: 120, two: 180 }
+      };
+      const threshold = thresholds[difficulty];
+      
+      if (body.timeTakenSeconds < threshold.three) starsEarned = 3;
+      else if (body.timeTakenSeconds < threshold.two) starsEarned = 2;
+      else starsEarned = 1;
+    }
+
     // Create a prompt for AI feedback generation
     // WHY THIS PROMPT? Provides context for personalized, educational feedback
     const feedbackPrompt = `
@@ -110,8 +128,8 @@ export async function POST(request: Request) {
     const feedbackResponse = await feedbackResult.response;
     const feedbackText = feedbackResponse.text().trim();
 
-    // Save the submission to database
-    // WHY? Tracks user progress and stores feedback for future reference
+    // Save the submission to database with time and stars
+    // WHY? Tracks user progress, performance metrics, and stores feedback
     const { error: submitError } = await supabase
       .from('math_problem_submissions')
       .insert({
@@ -119,6 +137,8 @@ export async function POST(request: Request) {
         user_answer: body.userAnswer,
         is_correct: isCorrect,
         feedback_text: feedbackText,
+        time_taken_seconds: body.timeTakenSeconds || null,
+        stars_earned: starsEarned,
       });
 
     // Handle database errors during submission but don't fail the request

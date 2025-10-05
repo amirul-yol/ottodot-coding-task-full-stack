@@ -28,6 +28,42 @@ export default function Home() {
   // Temporary selections in modal (committed only when "Generate Problem" is clicked)
   const [tempDifficulty, setTempDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
   const [tempTopic, setTempTopic] = useState<'addition' | 'subtraction' | 'multiplication' | 'division' | 'random'>('random')
+  
+  // Timer and star rating state
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [timerActive, setTimerActive] = useState(false)
+  const [starsEarned, setStarsEarned] = useState<number | null>(null)
+
+  /**
+   * Calculate stars earned based on time and difficulty
+   * WHY? Rewards both speed and accuracy for better engagement
+   */
+  const calculateStars = (timeInSeconds: number, difficultyLevel: 'easy' | 'medium' | 'hard'): number => {
+    const thresholds = {
+      easy: { three: 30, two: 60 },
+      medium: { three: 60, two: 120 },
+      hard: { three: 120, two: 180 }
+    };
+
+    const threshold = thresholds[difficultyLevel];
+    
+    if (timeInSeconds < threshold.three) return 3;
+    if (timeInSeconds < threshold.two) return 2;
+    return 1;
+  };
+
+  /**
+   * Format timer display
+   * WHY? Shows seconds until 60s, then switches to M:SS for readability
+   */
+  const formatTimer = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   /**
    * Trigger confetti animation for correct answers
@@ -135,6 +171,26 @@ export default function Home() {
   }, [showFeedbackModal, showSettingsModal]);
 
   /**
+   * Timer effect - increments every second when active
+   * WHY? Tracks how long student takes to answer the problem
+   */
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (timerActive) {
+      interval = setInterval(() => {
+        setTimerSeconds((prev) => prev + 1);
+      }, 1000);
+    } else if (interval) {
+      clearInterval(interval);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerActive]);
+
+  /**
    * Generates a new math problem using AI with specific settings
    *
    * HOW IT WORKS:
@@ -197,6 +253,11 @@ export default function Home() {
       setIsCorrect(null);
       setError(null); // Clear any previous errors on successful generation
       setShowHint(false); // Reset hint visibility for new problem
+      setStarsEarned(null); // Reset stars for new problem
+      
+      // Start timer for new problem
+      setTimerSeconds(0);
+      setTimerActive(true);
 
     } catch (error) {
       // Handle any errors during the API call
@@ -246,16 +307,25 @@ export default function Home() {
       return;
     }
 
+    // Stop timer immediately when submit is clicked
+    setTimerActive(false);
+    const finalTime = timerSeconds;
+    
     // Set loading state to prevent multiple submissions
     // WHY? Users might click submit multiple times quickly
     setIsLoading(true);
 
     try {
-      // Prepare request body with session ID and user's answer
+      // Calculate stars if answer will be correct (we'll verify after API call)
+      // WHY? Stars are only awarded for correct answers
+      const potentialStars = calculateStars(finalTime, difficulty);
+      
+      // Prepare request body with session ID, user's answer, and time taken
       // WHY parseInt? Converts string input to number for proper comparison
       const requestBody = {
         sessionId: sessionId,
         userAnswer: parseInt(userAnswer), // Convert string to number
+        timeTakenSeconds: finalTime,
       };
 
       // Make API call to submit answer and get feedback
@@ -282,13 +352,16 @@ export default function Home() {
       setIsCorrect(data.isCorrect);
       setError(null); // Clear any previous errors on successful submission
 
+      // Award stars only if answer is correct
+      if (data.isCorrect) {
+        setStarsEarned(potentialStars);
+        triggerConfetti();
+      } else {
+        setStarsEarned(0); // No stars for incorrect answers
+      }
+
       // Show feedback modal immediately
       setShowFeedbackModal(true);
-
-      // Trigger confetti animation if answer is correct
-      if (data.isCorrect) {
-        triggerConfetti();
-      }
 
       // Note: We don't clear userAnswer here - user might want to see what they entered
       // They'll need to generate a new problem to continue
@@ -323,23 +396,23 @@ export default function Home() {
         <div className="w-full bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-white/20">
           {/* Fancy title with gradient and shadow - responsive font size */}
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent drop-shadow-lg">
-            Math Problem Generator
-          </h1>
-
+          Math Problem Generator
+        </h1>
+        
           {/* Divider after title */}
           <div className="border-t-2 border-gray-100 mb-6"></div>
 
           {/* Generate button - shown when no problem exists */}
           {!problem && (
             <div className="mb-6">
-              <button
+          <button
                 onClick={openSettingsModal}
-                disabled={isLoading}
+            disabled={isLoading}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
-              >
+          >
                 {isLoading ? '✨ Generating...' : '🎲 New Problem'}
-              </button>
-            </div>
+          </button>
+        </div>
           )}
 
           {/* Error display */}
@@ -350,34 +423,43 @@ export default function Home() {
           )}
 
           {/* Problem display section */}
-          {problem && (
+        {problem && (
             <div className="border-t-2 border-gray-100 pt-6 mt-6">
-            {/* Problem Header with Badges */}
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <h2 className="text-2xl font-bold text-transparent bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text">
-                ❓ Problem:
-              </h2>
-              {/* Difficulty Badge */}
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                difficulty === 'medium' ? 'bg-blue-100 text-blue-700' :
-                'bg-red-100 text-red-700'
-              }`}>
-                {difficulty.toUpperCase()}
-              </span>
-              {/* Topic Badge */}
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
-                {topic === 'addition' ? '➕ Addition' :
-                 topic === 'subtraction' ? '➖ Subtraction' :
-                 topic === 'multiplication' ? '✖️ Multiplication' :
-                 topic === 'division' ? '➗ Division' :
-                 '🎲 Random'}
-              </span>
+            {/* Problem Header with Badges and Timer */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-2xl font-bold text-transparent bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text">
+                  ❓ Problem:
+                </h2>
+                {/* Difficulty Badge */}
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                  difficulty === 'medium' ? 'bg-blue-100 text-blue-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {difficulty.toUpperCase()}
+                </span>
+                {/* Topic Badge */}
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
+                  {topic === 'addition' ? '➕ Addition' :
+                   topic === 'subtraction' ? '➖ Subtraction' :
+                   topic === 'multiplication' ? '✖️ Multiplication' :
+                   topic === 'division' ? '➗ Division' :
+                   '🎲 Random'}
+                </span>
+              </div>
+              {/* Timer Display */}
+              <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg border-2 border-gray-200">
+                <span className="text-lg">⏱️</span>
+                <span className="text-lg font-mono font-bold text-gray-700">
+                  {formatTimer(timerSeconds)}
+                </span>
+              </div>
             </div>
             <p className="text-lg text-gray-800 leading-relaxed mb-6 font-medium">
               {problem.problem_text}
             </p>
-
+            
             {/* Hint Button - Only show if hint is available */}
             {problem.hint && (
               <div className="mb-6">
@@ -416,9 +498,9 @@ export default function Home() {
               
               {/* Action buttons - responsive: stacked on mobile, side-by-side on desktop */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  type="submit"
-                  disabled={!userAnswer || isLoading}
+              <button
+                type="submit"
+                disabled={!userAnswer || isLoading}
                   className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
                 >
                   {isLoading ? '⏳ Checking...' : '✅ Submit Answer'}
@@ -431,11 +513,11 @@ export default function Home() {
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
                 >
                   {isLoading ? '✨ Generating...' : '🎲 New Problem'}
-                </button>
+              </button>
               </div>
             </form>
-            </div>
-          )}
+          </div>
+        )}
 
         </div>
       </main>
@@ -472,6 +554,37 @@ export default function Home() {
 
               {/* Scrollable Feedback Content */}
               <div className="overflow-y-auto overflow-x-hidden px-8 pt-8 pb-4 scroll-smooth" style={{ scrollbarWidth: 'thin' }}>
+                {/* Stars Display - Only for correct answers */}
+                {isCorrect && starsEarned !== null && starsEarned > 0 && (
+                  <div className="flex justify-center gap-2 mb-6">
+                    {[...Array(3)].map((_, index) => (
+                      <div
+                        key={index}
+                        className={`text-5xl transition-all duration-300 ${
+                          index < starsEarned
+                            ? 'scale-110 animate-pulse'
+                            : 'opacity-30 grayscale'
+                        }`}
+                        style={{
+                          filter: index < starsEarned ? 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.8))' : 'none',
+                          animationDelay: `${index * 0.1}s`
+                        }}
+                      >
+                        ⭐
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Time Display */}
+                {timerSeconds > 0 && (
+                  <div className="text-center mb-4">
+                    <p className="text-sm font-semibold text-gray-600">
+                      ⏱️ Time: <span className="font-mono text-gray-800">{formatTimer(timerSeconds)}</span>
+                    </p>
+          </div>
+        )}
+
                 <div className={`text-center p-6 rounded-2xl ${
                   isCorrect 
                     ? 'bg-gradient-to-br from-green-50 to-emerald-50' 
@@ -546,7 +659,7 @@ export default function Home() {
               {/* Modal Header */}
               <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
                 ⚙️ Problem Settings
-              </h2>
+            </h2>
 
               {/* Difficulty Selection */}
               <div className="mb-6">
@@ -617,7 +730,7 @@ export default function Home() {
             </div>
           </div>
         </>
-      )}
+        )}
     </div>
   )
 }

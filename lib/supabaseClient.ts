@@ -48,6 +48,8 @@ export type Database = {
           user_answer: number
           is_correct: boolean
           feedback_text: string
+          time_taken_seconds: number | null
+          stars_earned: number | null
         }
         Insert: {
           id?: string
@@ -55,6 +57,8 @@ export type Database = {
           user_answer: number
           is_correct: boolean
           feedback_text: string
+          time_taken_seconds?: number
+          stars_earned?: number
         }
         Update: {
           id?: string
@@ -62,6 +66,8 @@ export type Database = {
           user_answer?: number
           is_correct?: boolean
           feedback_text?: string
+          time_taken_seconds?: number
+          stars_earned?: number
         }
       }
     }
