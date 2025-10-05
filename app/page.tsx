@@ -350,20 +350,20 @@ export default function Home() {
               {/* Action buttons - responsive: stacked on mobile, side-by-side on desktop */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
+                  type="submit"
+                  disabled={!userAnswer || isLoading}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
+                >
+                  {isLoading ? '⏳ Checking...' : '✅ Submit Answer'}
+                </button>
+                
+                <button
                   type="button"
                   onClick={generateProblem}
                   disabled={isLoading}
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
                 >
                   {isLoading ? '✨ Generating...' : '🎲 New Problem'}
-                </button>
-                
-                <button
-                  type="submit"
-                  disabled={!userAnswer || isLoading}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
-                >
-                  {isLoading ? '⏳ Checking...' : '✅ Submit Answer'}
                 </button>
               </div>
             </form>

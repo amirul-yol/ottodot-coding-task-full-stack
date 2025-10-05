@@ -75,7 +75,9 @@
   - Vertically centered layout for better visual balance
   - Added divider below title for better visual hierarchy
   - Added initial "Generate New Problem" button for first-time load
-  - Repositioned action buttons side-by-side (Generate + Submit) for space efficiency
+  - Repositioned action buttons side-by-side (Submit + Generate) for better UX hierarchy
+  - Submit Answer button placed first (top on mobile, left on desktop) as primary action
+  - New Problem button placed second (bottom on mobile, right on desktop) as secondary action
   - Implemented responsive button layout (stacked on mobile, side-by-side on desktop)
   - Added gradient buttons with hover animations and scale transforms
   - Implemented rounded-3xl corners for modern aesthetic
