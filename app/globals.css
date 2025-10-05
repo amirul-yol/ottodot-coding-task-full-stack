@@ -1,3 +1,4 @@
+/* Tailwind base/components/utilities must be at the top so PostCSS can process them */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
