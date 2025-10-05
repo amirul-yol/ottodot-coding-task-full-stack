@@ -130,8 +130,8 @@ When submitting your assessment, provide:
 2. **Live Demo URL**: Your Vercel deployment
 3. **Supabase Credentials**: Add these to your README for testing:
    ```
-   SUPABASE_URL: [Your Supabase Project URL]
-   SUPABASE_ANON_KEY: [Your Supabase Anon Key]
+   SUPABASE_URL: https://wigcizcnhgbtgaqsyjai.supabase.co
+   SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpZ2NpemNuaGdidGdhcXN5amFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1ODU0NTAsImV4cCI6MjA3NTE2MTQ1MH0.k5klNQyX_pgnQKHnT5odq7nrboZfQmParMdAPm8BYjQ
    ```
 
 ## Implementation Notes
