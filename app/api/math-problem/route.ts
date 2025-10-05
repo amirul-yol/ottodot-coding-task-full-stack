@@ -80,12 +80,24 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   // Create a detailed prompt for the AI
-  // WHY THIS PROMPT? Specifies age group, math level, and exact JSON format needed
-  // NOTE: Now includes hint generation for student assistance
+  // WHY THIS PROMPT? Specifies age group, math level, variety requirements, and exact JSON format
+  // NOTE: Enhanced with diversity instructions to prevent repetitive problems
   const prompt = `
-    Generate a math word problem suitable for Primary 5 students (10-11 years old).
-    The problem should involve basic arithmetic operations like addition, subtraction, multiplication, or division.
-    Make it engaging and relatable for children.
+    Generate a UNIQUE and CREATIVE math word problem suitable for Primary 5 students (10-11 years old).
+    
+    VARIETY REQUIREMENTS - Make each problem different:
+    - Use DIVERSE scenarios: sports, cooking, animals, school, games, shopping, nature, travel, books, arts, technology
+    - Use DIFFERENT operations: addition, subtraction, multiplication, division, or multi-step combinations
+    - Use VARIED problem structures: finding totals, differences, rates, distributions, comparisons, equal groups
+    - Use DIFFERENT names each time (avoid repeating common names like Sarah, Lily, John)
+    - Make each problem feel UNIQUE and engaging for children
+    
+    EXAMPLES OF DIVERSE PROBLEMS:
+    - "A zoo has 48 penguins split equally into 6 enclosures. How many penguins are in each enclosure?"
+    - "Tom scored 23 points in the first basketball game and 31 in the second. How many total points did he score?"
+    - "A bakery makes 156 cookies and packs them into boxes of 12. How many boxes can they fill?"
+    - "Emma has 5 sticker books with 25 pages each. If each page holds 8 stickers, how many stickers can she collect in total?"
+    - "A farmer planted 7 rows of tomato plants with 9 plants in each row. How many tomato plants did he plant?"
 
     CRITICAL REQUIREMENTS:
     - Respond with ONLY a valid JSON object
@@ -96,9 +108,9 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
     - Format MUST be exactly:
 
     {
-      "problem_text": "A bakery sold 45 cupcakes in the morning and 32 cupcakes in the afternoon. How many cupcakes did they sell in total?",
-      "final_answer": 77,
-      "hint": "Try adding the number of cupcakes sold in the morning to the number sold in the afternoon."
+      "problem_text": "Your unique and creative problem here...",
+      "final_answer": 42,
+      "hint": "Your helpful hint here..."
     }
   `;
 

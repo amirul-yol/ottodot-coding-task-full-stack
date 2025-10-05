@@ -54,6 +54,13 @@
   - Added hint field to API response payload (was only saved to database)
   - Hint now properly passed from backend to frontend for display
 
+- **AI Problem Variety** - Enhanced prompt to generate diverse, creative problems
+  - Added explicit variety requirements (diverse scenarios, operations, names)
+  - Included multiple example problems to guide AI toward creativity
+  - Specified 10+ scenario themes (sports, cooking, animals, school, games, etc.)
+  - Instructed AI to avoid repetitive patterns and common names
+  - Improved problem diversity and engagement for students
+
 - **UX Improvements** - Enhanced error handling and user feedback
   - Added error state management for API failure notifications
   - Implemented user-friendly error messages instead of silent failures
