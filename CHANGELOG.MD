@@ -40,6 +40,27 @@
   - Fixed error display styling with functional Tailwind utility classes
 
 ### Added
+- **Feedback Modal with Confetti** - Engaging modal dialog for answer feedback
+  - Implemented modal component that appears immediately after answer submission
+  - Added confetti animation for correct answers using canvas-confetti library
+  - Includes "Try Another Problem" button that auto-closes modal and generates new problem
+  - Added "X" close button to allow users to re-attempt same question
+  - Backdrop click and Escape key support for improved UX
+  - Fade-in with scale animation for smooth entrance
+  - Semi-transparent dark backdrop (50% opacity) with blur effect
+  - Responsive sizing (nearly full-width on mobile, centered medium size on desktop)
+  - Colored borders (green for correct, yellow for incorrect answers)
+  - Installed canvas-confetti and @types/canvas-confetti packages
+  - **Scrollable Modal Content** - Enhanced mobile UX for long AI feedback
+    - Added vertical scrolling support with max-height (85vh) for feedback content
+    - Reduced text size from `text-lg` to `text-base` for better readability and less scrolling
+    - Implemented responsive heading size (`text-2xl` mobile, `text-3xl` desktop)
+    - Added subtle gradient fade indicator at bottom to visually show scrollability
+    - Fixed "Try Another Problem" button at bottom for consistent access
+    - Applied thin scrollbar styling (`scrollbarWidth: 'thin'`) for cleaner appearance
+    - Enabled smooth scroll behavior for enhanced UX
+    - Preserves full educational feedback value while optimizing mobile experience
+
 - **Background Image & Visual Enhancements** - Modern, polished UI design
   - Implemented classroom-themed background from `public/images/background.jpg`
   - Added medium blur (backdrop-blur-md) and 40% dark overlay for visual comfort

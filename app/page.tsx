@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import confetti from 'canvas-confetti'
 
 interface MathProblem {
   problem_text: string
@@ -17,6 +18,76 @@ export default function Home() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showHint, setShowHint] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+
+  /**
+   * Trigger confetti animation for correct answers
+   * WHY? Celebrates student success and makes learning fun!
+   */
+  const triggerConfetti = () => {
+    const duration = 3000; // 3 seconds
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+    function randomInRange(min: number, max: number) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+
+      // Confetti from left side
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      });
+      // Confetti from right side
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      });
+    }, 250);
+  }
+
+  /**
+   * Handle closing the feedback modal
+   * WHY? Allows users to re-attempt the same question
+   */
+  const closeFeedbackModal = () => {
+    setShowFeedbackModal(false);
+  }
+
+  /**
+   * Handle "Try Another Problem" button
+   * WHY? Closes modal and generates new problem automatically
+   */
+  const handleTryAnotherProblem = () => {
+    setShowFeedbackModal(false);
+    generateProblem();
+  }
+
+  /**
+   * Close modal on Escape key press
+   * WHY? Improves UX with keyboard accessibility
+   */
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showFeedbackModal) {
+        closeFeedbackModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showFeedbackModal]);
 
   /**
    * Generates a new math problem using AI
@@ -163,6 +234,14 @@ export default function Home() {
       setIsCorrect(data.isCorrect);
       setError(null); // Clear any previous errors on successful submission
 
+      // Show feedback modal immediately
+      setShowFeedbackModal(true);
+
+      // Trigger confetti animation if answer is correct
+      if (data.isCorrect) {
+        triggerConfetti();
+      }
+
       // Note: We don't clear userAnswer here - user might want to see what they entered
       // They'll need to generate a new problem to continue
 
@@ -291,21 +370,85 @@ export default function Home() {
             </div>
           )}
 
-          {/* Feedback section */}
-          {feedback && (
-            <div className={`border-t-2 border-gray-100 pt-6 mt-6 rounded-xl p-6 ${
-              isCorrect 
-                ? 'bg-gradient-to-br from-green-50 to-emerald-50' 
-                : 'bg-gradient-to-br from-yellow-50 to-amber-50'
-            }`}>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900">
-                {isCorrect ? '🎉 Correct! Amazing!' : '🤔 Not quite right'}
-              </h2>
-              <p className="text-gray-900 leading-relaxed text-lg font-medium">{feedback}</p>
-            </div>
-          )}
         </div>
       </main>
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && feedback && (
+        <>
+          {/* Backdrop - semi-transparent with blur */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
+            onClick={closeFeedbackModal}
+          ></div>
+
+          {/* Modal Container - centered with fade + scale animation */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className={`relative w-full max-w-lg bg-white rounded-3xl shadow-2xl transform transition-all duration-300 scale-100 flex flex-col ${
+                isCorrect 
+                  ? 'border-4 border-green-400' 
+                  : 'border-4 border-yellow-400'
+              }`}
+              style={{ animation: 'modalFadeIn 0.3s ease-out', maxHeight: '85vh' }}
+            >
+              {/* Close button (X) */}
+              <button
+                onClick={closeFeedbackModal}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
+                aria-label="Close modal"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {/* Scrollable Feedback Content */}
+              <div className="overflow-y-auto overflow-x-hidden px-8 pt-8 pb-4 scroll-smooth" style={{ scrollbarWidth: 'thin' }}>
+                <div className={`text-center p-6 rounded-2xl ${
+                  isCorrect 
+                    ? 'bg-gradient-to-br from-green-50 to-emerald-50' 
+                    : 'bg-gradient-to-br from-yellow-50 to-amber-50'
+                }`}>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900">
+                    {isCorrect ? '🎉 Correct! Amazing!' : '🤔 Not quite right'}
+                  </h2>
+                  <p className="text-gray-900 leading-relaxed text-base font-medium">
+                    {feedback}
+                  </p>
+                </div>
+              </div>
+
+              {/* Scroll Indicator - subtle gradient fade at bottom */}
+              <div className="absolute bottom-20 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+
+              {/* Try Another Problem Button - Fixed at bottom */}
+              <div className="px-8 pb-8 pt-4 bg-white rounded-b-3xl">
+                <button
+                  onClick={handleTryAnotherProblem}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl"
+                >
+                  🎲 Try Another Problem
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* CSS Animation for modal entrance */}
+          <style jsx>{`
+            @keyframes modalFadeIn {
+              from {
+                opacity: 0;
+                transform: scale(0.9);
+              }
+              to {
+                opacity: 1;
+                transform: scale(1);
+              }
+            }
+          `}</style>
+        </>
+      )}
     </div>
   )
 }
