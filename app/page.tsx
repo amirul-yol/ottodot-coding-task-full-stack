@@ -14,6 +14,7 @@ export default function Home() {
   const [userAnswer, setUserAnswer] = useState('')
   const [feedback, setFeedback] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingType, setLoadingType] = useState<'generating' | 'checking' | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +34,138 @@ export default function Home() {
   const [timerSeconds, setTimerSeconds] = useState(0)
   const [timerActive, setTimerActive] = useState(false)
   const [starsEarned, setStarsEarned] = useState<number | null>(null)
+  
+  // Sound effects and achievements state
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [showAchievementNotification, setShowAchievementNotification] = useState(false)
+  const [newAchievement, setNewAchievement] = useState<{name: string; icon: string; description: string} | null>(null)
+  
+  // Achievement tracking
+  const [achievements, setAchievements] = useState<{[key: string]: boolean}>({})
+  const [problemsCompleted, setProblemsCompleted] = useState(0)
+  const [correctStreak, setCorrectStreak] = useState(0)
+  const [hintsUsed, setHintsUsed] = useState(0)
+
+  /**
+   * Load achievements from localStorage on mount
+   */
+  useEffect(() => {
+    const savedAchievements = localStorage.getItem('mathAchievements');
+    const savedProblemsCompleted = localStorage.getItem('problemsCompleted');
+    const savedHintsUsed = localStorage.getItem('hintsUsed');
+    const savedSoundEnabled = localStorage.getItem('soundEnabled');
+    
+    if (savedAchievements) setAchievements(JSON.parse(savedAchievements));
+    if (savedProblemsCompleted) setProblemsCompleted(parseInt(savedProblemsCompleted));
+    if (savedHintsUsed) setHintsUsed(parseInt(savedHintsUsed));
+    if (savedSoundEnabled !== null) setSoundEnabled(savedSoundEnabled === 'true');
+  }, []);
+
+  /**
+   * Play sound effect
+   * WHY? Audio feedback makes the app more engaging for kids
+   */
+  const playSound = (type: 'whoosh' | 'success' | 'bling' | 'click') => {
+    if (!soundEnabled) return;
+    
+    const sounds: {[key: string]: {frequency: number; duration: number; type: OscillatorType}} = {
+      whoosh: { frequency: 200, duration: 150, type: 'sine' },
+      success: { frequency: 523.25, duration: 200, type: 'triangle' }, // C5 note
+      bling: { frequency: 784, duration: 150, type: 'sine' }, // G5 note
+      click: { frequency: 300, duration: 50, type: 'square' }
+    };
+    
+    const sound = sounds[type];
+    if (!sound) return;
+    
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = sound.frequency;
+      oscillator.type = sound.type;
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + sound.duration / 1000);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + sound.duration / 1000);
+    } catch (error) {
+      console.log('Sound playback not supported');
+    }
+  };
+
+  /**
+   * Check and award achievements
+   */
+  const checkAchievements = (isCorrect: boolean, stars: number) => {
+    const newAchievementsUnlocked: {[key: string]: {name: string; icon: string; description: string}} = {};
+    
+    // First Steps - Complete first problem
+    if (problemsCompleted === 0 && !achievements.firstSteps) {
+      newAchievementsUnlocked.firstSteps = {
+        name: 'First Steps',
+        icon: '🎯',
+        description: 'Completed your first problem!'
+      };
+    }
+    
+    // Speed Star - Get 3 stars
+    if (stars === 3 && !achievements.speedStar) {
+      newAchievementsUnlocked.speedStar = {
+        name: 'Speed Star',
+        icon: '⚡',
+        description: 'Lightning fast! Got 3 stars!'
+      };
+    }
+    
+    // Problem Solver - 5 problems total
+    if (problemsCompleted + 1 >= 5 && !achievements.problemSolver) {
+      newAchievementsUnlocked.problemSolver = {
+        name: 'Problem Solver',
+        icon: '🧠',
+        description: 'Solved 5 problems!'
+      };
+    }
+    
+    // Perfection - 3 correct in a row
+    if (isCorrect && correctStreak + 1 >= 3 && !achievements.perfection) {
+      newAchievementsUnlocked.perfection = {
+        name: 'Perfection',
+        icon: '💯',
+        description: '3 correct answers in a row!'
+      };
+    }
+    
+    // Helper Seeker - Use a hint
+    if (hintsUsed === 1 && !achievements.helperSeeker) {
+      newAchievementsUnlocked.helperSeeker = {
+        name: 'Helper Seeker',
+        icon: '💡',
+        description: 'Smart! You used a hint!'
+      };
+    }
+    
+    // Save and show new achievements
+    if (Object.keys(newAchievementsUnlocked).length > 0) {
+      const updatedAchievements = { ...achievements, ...Object.keys(newAchievementsUnlocked).reduce((acc, key) => ({ ...acc, [key]: true }), {}) };
+      setAchievements(updatedAchievements);
+      localStorage.setItem('mathAchievements', JSON.stringify(updatedAchievements));
+      
+      // Show first new achievement
+      const firstKey = Object.keys(newAchievementsUnlocked)[0];
+      setNewAchievement(newAchievementsUnlocked[firstKey]);
+      setShowAchievementNotification(true);
+      playSound('bling');
+      
+      // Auto-hide after 4 seconds
+      setTimeout(() => setShowAchievementNotification(false), 4000);
+    }
+  };
 
   /**
    * Calculate stars earned based on time and difficulty
@@ -215,6 +348,7 @@ export default function Home() {
     // Set loading state to true immediately to prevent multiple rapid clicks
     // WHY? Users might click button multiple times quickly, causing duplicate requests
     setIsLoading(true);
+    setLoadingType('generating');
 
     try {
       // Make API call to generate new problem with user preferences
@@ -258,6 +392,9 @@ export default function Home() {
       // Start timer for new problem
       setTimerSeconds(0);
       setTimerActive(true);
+      
+      // Play success sound
+      playSound('whoosh');
 
     } catch (error) {
       // Handle any errors during the API call
@@ -272,6 +409,7 @@ export default function Home() {
       // Always clear loading state when done (success or failure)
       // WHY? Ensures button becomes clickable again
       setIsLoading(false);
+      setLoadingType(null);
     }
   }
 
@@ -314,6 +452,7 @@ export default function Home() {
     // Set loading state to prevent multiple submissions
     // WHY? Users might click submit multiple times quickly
     setIsLoading(true);
+    setLoadingType('checking');
 
     try {
       // Calculate stars if answer will be correct (we'll verify after API call)
@@ -356,8 +495,27 @@ export default function Home() {
       if (data.isCorrect) {
         setStarsEarned(potentialStars);
         triggerConfetti();
+        playSound('success');
+        
+        // Update streak and problems completed
+        const newStreak = correctStreak + 1;
+        setCorrectStreak(newStreak);
+        const newProblemsCompleted = problemsCompleted + 1;
+        setProblemsCompleted(newProblemsCompleted);
+        localStorage.setItem('problemsCompleted', newProblemsCompleted.toString());
+        
+        // Check for achievements
+        checkAchievements(true, potentialStars);
       } else {
         setStarsEarned(0); // No stars for incorrect answers
+        setCorrectStreak(0); // Reset streak on incorrect answer
+        
+        // Still count as problem attempted
+        const newProblemsCompleted = problemsCompleted + 1;
+        setProblemsCompleted(newProblemsCompleted);
+        localStorage.setItem('problemsCompleted', newProblemsCompleted.toString());
+        
+        checkAchievements(false, 0);
       }
 
       // Show feedback modal immediately
@@ -377,6 +535,7 @@ export default function Home() {
     } finally {
       // Always clear loading state when done
       setIsLoading(false);
+      setLoadingType(null);
     }
   }
 
@@ -392,6 +551,19 @@ export default function Home() {
       ></div>
 
       <main className="container mx-auto px-4 py-8 max-w-3xl relative flex items-center justify-center min-h-screen" style={{ zIndex: 1 }}>
+        {/* Sound Toggle Button - Top Right */}
+        <button
+          onClick={() => {
+            setSoundEnabled(!soundEnabled);
+            localStorage.setItem('soundEnabled', (!soundEnabled).toString());
+            playSound('click');
+          }}
+          className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm hover:bg-white p-3 rounded-full shadow-lg transition duration-300 hover:scale-110"
+          aria-label="Toggle sound"
+        >
+          <span className="text-2xl">{soundEnabled ? '🔊' : '🔇'}</span>
+        </button>
+
         {/* Single unified container with all content */}
         <div className="w-full bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-white/20">
           {/* Fancy title with gradient and shadow - responsive font size */}
@@ -402,17 +574,35 @@ export default function Home() {
           {/* Divider after title */}
           <div className="border-t-2 border-gray-100 mb-6"></div>
 
-          {/* Generate button - shown when no problem exists */}
-          {!problem && (
+          {/* Generate button or loading animation - shown when no problem exists */}
+          {!problem && !isLoading && (
             <div className="mb-6">
           <button
                 onClick={openSettingsModal}
             disabled={isLoading}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
           >
-                {isLoading ? '✨ Generating...' : '🎲 New Problem'}
+                🎲 New Problem
           </button>
         </div>
+          )}
+          
+          {/* Loading Animation for Problem Generation */}
+          {isLoading && !problem && (
+            <div className="mb-6 py-12 flex flex-col items-center justify-center">
+              <div className="relative w-32 h-32 mb-6">
+                {/* Spinning Math Symbols */}
+                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 text-4xl">➕</div>
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-4xl">➖</div>
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 text-4xl">✖️</div>
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 text-4xl">➗</div>
+                </div>
+              </div>
+              <p className="text-lg font-bold text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text animate-pulse">
+                Creating your problem...
+              </p>
+            </div>
           )}
 
           {/* Error display */}
@@ -465,7 +655,29 @@ export default function Home() {
               <div className="mb-6">
                 {!showHint ? (
                   <button
-                    onClick={() => setShowHint(true)}
+                    onClick={() => {
+                      setShowHint(true);
+                      playSound('click');
+                      const newHintsUsed = hintsUsed + 1;
+                      setHintsUsed(newHintsUsed);
+                      localStorage.setItem('hintsUsed', newHintsUsed.toString());
+                      
+                      // Check for Helper Seeker achievement
+                      if (newHintsUsed === 1 && !achievements.helperSeeker) {
+                        const helperAchievement = {
+                          name: 'Helper Seeker',
+                          icon: '💡',
+                          description: 'Smart! You used a hint!'
+                        };
+                        const updatedAchievements = { ...achievements, helperSeeker: true };
+                        setAchievements(updatedAchievements);
+                        localStorage.setItem('mathAchievements', JSON.stringify(updatedAchievements));
+                        setNewAchievement(helperAchievement);
+                        setShowAchievementNotification(true);
+                        playSound('bling');
+                        setTimeout(() => setShowAchievementNotification(false), 4000);
+                      }
+                    }}
                     type="button"
                     className="text-amber-600 hover:text-amber-700 font-semibold text-sm flex items-center gap-2 transition duration-200 hover:gap-3"
                   >
@@ -480,7 +692,31 @@ export default function Home() {
               </div>
             )}
             
-            <form onSubmit={submitAnswer} className="space-y-5">
+            <form onSubmit={submitAnswer} className="space-y-5 relative">
+              {/* Calculator Checking Animation Overlay */}
+              {loadingType === 'checking' && (
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10">
+                  <div className="relative mb-4">
+                    {/* Calculator icon with bouncing numbers */}
+                    <div className="text-6xl mb-4">🧮</div>
+                    <div className="flex gap-3 justify-center">
+                      {[1, 2, 3, 4, 5].map((num, idx) => (
+                        <div
+                          key={num}
+                          className="text-2xl font-bold text-blue-600 animate-bounce"
+                          style={{ animationDelay: `${idx * 0.1}s`, animationDuration: '0.6s' }}
+                        >
+                          {num}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-transparent bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text animate-pulse">
+                    Checking your answer...
+                  </p>
+                </div>
+              )}
+              
               <div>
                 <label htmlFor="answer" className="block text-base font-bold text-gray-700 mb-3">
                   ✍️ Your Answer:
@@ -493,6 +729,7 @@ export default function Home() {
                   className="w-full px-5 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-lg font-medium text-gray-900"
                   placeholder="Enter your answer"
                   required
+                  disabled={isLoading}
                 />
               </div>
               
@@ -503,7 +740,7 @@ export default function Home() {
                 disabled={!userAnswer || isLoading}
                   className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
                 >
-                  {isLoading ? '⏳ Checking...' : '✅ Submit Answer'}
+                  ✅ Submit Answer
                 </button>
                 
                 <button
@@ -512,7 +749,7 @@ export default function Home() {
                   disabled={isLoading}
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
                 >
-                  {isLoading ? '✨ Generating...' : '🎲 New Problem'}
+                  🎲 New Problem
               </button>
               </div>
             </form>
@@ -730,7 +967,40 @@ export default function Home() {
             </div>
           </div>
         </>
-        )}
+      )}
+
+      {/* Achievement Notification */}
+      {showAchievementNotification && newAchievement && (
+        <div 
+          className="fixed top-20 right-4 z-50 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-6 py-4 rounded-2xl shadow-2xl border-4 border-yellow-300"
+          style={{ 
+            animation: 'slideIn 0.5s ease-out',
+          }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-5xl">{newAchievement.icon}</div>
+            <div>
+              <h3 className="font-bold text-lg">Achievement Unlocked!</h3>
+              <p className="font-semibold">{newAchievement.name}</p>
+              <p className="text-sm text-yellow-50">{newAchievement.description}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global CSS for animations */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}} />
     </div>
   )
 }
