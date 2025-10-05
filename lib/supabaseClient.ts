@@ -19,6 +19,8 @@ export type Database = {
           problem_text: string
           correct_answer: number
           hint: string | null
+          difficulty: string
+          topic: string
         }
         Insert: {
           id?: string
@@ -26,6 +28,8 @@ export type Database = {
           problem_text: string
           correct_answer: number
           hint?: string
+          difficulty?: string
+          topic?: string
         }
         Update: {
           id?: string
@@ -33,6 +37,8 @@ export type Database = {
           problem_text?: string
           correct_answer?: number
           hint?: string
+          difficulty?: string
+          topic?: string
         }
       }
       math_problem_submissions: {

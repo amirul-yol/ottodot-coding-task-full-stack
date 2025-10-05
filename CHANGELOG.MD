@@ -3,6 +3,33 @@
 ## [Unreleased]
 
 ### Added
+- **Difficulty & Topic Selection** - Customizable problem generation for personalized learning
+  - Added `difficulty` column to `math_problem_sessions` table (easy, medium, hard)
+  - Added `topic` column to `math_problem_sessions` table (addition, subtraction, multiplication, division, random)
+  - **Settings Modal Implementation** - Clean, kid-friendly UI for problem customization
+    - Modal appears every time "New Problem" button is clicked
+    - Pre-populates with last selections (remembers user preferences)
+    - Includes "Generate Problem" and "Cancel" buttons
+    - Backdrop click and Escape key support to close modal
+    - Fade-in with scale animation for smooth entrance
+    - Blue border for visual distinction from feedback modal
+    - Responsive grid layout for topic buttons (2 columns + full-width random)
+  - **Difficulty Badges** - Visual indicators showing current problem settings
+    - Color-coded badges (green=easy, blue=medium, red=hard)
+    - Topic badge with emoji icon (➕➖✖️➗🎲)
+    - Displayed next to "Problem:" heading
+    - Responsive flex layout with wrapping
+  - Updated AI prompt with difficulty-specific instructions:
+    - **Easy**: Single-step problems, small numbers (<100), simple operations
+    - **Medium**: Two-step problems, larger numbers (up to 500), combined operations
+    - **Hard**: Multi-step problems (3+ steps), complex reasoning, detailed hints
+  - Updated AI prompt with topic-specific instructions for focused practice
+  - Settings persist across problem generations (remembered in modal)
+  - Removed always-visible selectors from main UI for cleaner interface
+  - Updated TypeScript types across database schema, API routes, and frontend
+  - Backend defaults to 'medium' difficulty and 'random' topic for backward compatibility
+  - Frontend sends user preferences to API for customized problem generation
+
 - **API Routes Implementation**
   - **Problem Generation** (`app/api/math-problem/route.ts`) - Dedicated endpoint for AI-powered math problem generation
   - **Answer Submission** (`app/api/math-problem/submit/route.ts`) - Separate endpoint for answer submission and AI feedback

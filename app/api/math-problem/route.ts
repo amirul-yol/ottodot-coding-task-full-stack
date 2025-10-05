@@ -24,7 +24,8 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 // Type definitions for better code clarity and TypeScript support
 // WHY? TypeScript helps catch errors at compile time, not runtime
 interface GenerateProblemRequest {
-  // No body needed for problem generation - AI creates random problems
+  difficulty?: 'easy' | 'medium' | 'hard';
+  topic?: 'addition' | 'subtraction' | 'multiplication' | 'division' | 'random';
 }
 
 interface GenerateProblemResponse {
@@ -53,9 +54,13 @@ interface GenerateProblemResponse {
  */
 export async function POST(request: Request) {
   try {
-    // Handle problem generation directly
-    // WHY? This route is now dedicated to problem generation only
-    return await handleGenerateProblem(request);
+    // Parse request body to get difficulty and topic preferences
+    const body = await request.json() as GenerateProblemRequest;
+    const difficulty = body.difficulty || 'medium';
+    const topic = body.topic || 'random';
+    
+    // Handle problem generation with user preferences
+    return await handleGenerateProblem(request, difficulty, topic);
   } catch (error) {
     // Comprehensive error handling with detailed logging
     // WHY? Helps with debugging and provides meaningful error messages
@@ -75,10 +80,53 @@ export async function POST(request: Request) {
  * Handles the problem generation logic
  * WHY SEPARATE FUNCTION? Keeps the main POST handler clean and readable
  */
-async function handleGenerateProblem(request: Request): Promise<Response> {
+async function handleGenerateProblem(
+  request: Request, 
+  difficulty: 'easy' | 'medium' | 'hard',
+  topic: 'addition' | 'subtraction' | 'multiplication' | 'division' | 'random'
+): Promise<Response> {
   // Initialize Gemini AI model
   // WHY 'gemini-2.0-flash'? It's Google's most capable model for text generation
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+  // Build difficulty-specific instructions
+  const difficultyInstructions = {
+    easy: `
+      EASY DIFFICULTY:
+      - Single-step problems only
+      - Use small, friendly numbers (under 100)
+      - Simple operations: basic addition, subtraction, or single multiplication/division
+      - Clear, straightforward scenarios
+      - Example: "A basket has 12 apples. You add 8 more. How many apples are there now?"
+    `,
+    medium: `
+      MEDIUM DIFFICULTY:
+      - Two-step problems
+      - Use larger numbers (up to 500)
+      - Can combine operations
+      - Slightly more complex scenarios
+      - Example: "A store has 45 boxes with 6 pencils each. If they sell 70 pencils, how many are left?"
+    `,
+    hard: `
+      HARD DIFFICULTY:
+      - Multi-step problems (3+ steps)
+      - Use larger numbers and fractions/decimals where appropriate
+      - Require deeper reasoning and planning
+      - Complex word problem scenarios
+      - Still appropriate for Primary 5 level
+      - Example: "A library has 8 shelves with 15 books each. They receive 3 boxes of 12 new books. If they remove 25 damaged books, how many books remain?"
+      - For HARD problems, provide a MORE DETAILED hint that breaks down the steps
+    `
+  };
+
+  // Build topic-specific instructions
+  const topicInstructions = {
+    addition: 'Use ONLY ADDITION operations (can be multi-step addition)',
+    subtraction: 'Use ONLY SUBTRACTION operations (can be multi-step subtraction)',
+    multiplication: 'Use ONLY MULTIPLICATION operations (can include finding totals of groups)',
+    division: 'Use ONLY DIVISION operations (can include sharing or grouping problems)',
+    random: 'Use ANY combination of operations (addition, subtraction, multiplication, division)'
+  };
 
   // Create a detailed prompt for the AI
   // WHY THIS PROMPT? Specifies age group, math level, variety requirements, and exact JSON format
@@ -86,9 +134,14 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
   const prompt = `
     Generate a UNIQUE and CREATIVE math word problem suitable for Primary 5 students (10-11 years old).
     
+    DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+    ${difficultyInstructions[difficulty]}
+    
+    TOPIC: ${topic.toUpperCase()}
+    ${topicInstructions[topic]}
+    
     VARIETY REQUIREMENTS - Make each problem different:
     - Use DIVERSE scenarios: sports, cooking, animals, school, games, shopping, nature, travel, books, arts, technology
-    - Use DIFFERENT operations: addition, subtraction, multiplication, division, or multi-step combinations
     - Use VARIED problem structures: finding totals, differences, rates, distributions, comparisons, equal groups
     - Use DIFFERENT names each time (avoid repeating common names like Sarah, Lily, John)
     - Make each problem feel UNIQUE and engaging for children
@@ -198,7 +251,7 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
     console.log('✅ Successfully generated problem from AI:', parsedAIResponse.problem_text.substring(0, 50) + '...');
     console.log('💡 Hint provided:', parsedAIResponse.hint ? 'Yes' : 'No');
 
-    // Save the problem to the database (including hint if available)
+    // Save the problem to the database (including hint, difficulty, and topic)
     // WHY? Persists data for tracking and allows multiple attempts per problem
     // NOTE: Hint is optional - if AI doesn't provide it, we save NULL
     const { data: session, error: dbError } = await supabase
@@ -207,6 +260,8 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
         problem_text: parsedAIResponse.problem_text,
         correct_answer: parsedAIResponse.final_answer,
         hint: parsedAIResponse.hint || null, // Use null if hint is missing
+        difficulty: difficulty, // Save user's difficulty preference
+        topic: topic, // Save user's topic preference
       })
       .select()
       .single();

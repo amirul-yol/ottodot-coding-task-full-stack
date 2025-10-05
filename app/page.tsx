@@ -19,6 +19,15 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  
+  // Difficulty and topic preferences - persisted across problem generations
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
+  const [topic, setTopic] = useState<'addition' | 'subtraction' | 'multiplication' | 'division' | 'random'>('random')
+  
+  // Temporary selections in modal (committed only when "Generate Problem" is clicked)
+  const [tempDifficulty, setTempDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
+  const [tempTopic, setTempTopic] = useState<'addition' | 'subtraction' | 'multiplication' | 'division' | 'random'>('random')
 
   /**
    * Trigger confetti animation for correct answers
@@ -71,26 +80,62 @@ export default function Home() {
    */
   const handleTryAnotherProblem = () => {
     setShowFeedbackModal(false);
-    generateProblem();
+    openSettingsModal();
   }
 
   /**
-   * Close modal on Escape key press
+   * Open settings modal
+   * WHY? Shows difficulty and topic selection before generating problem
+   */
+  const openSettingsModal = () => {
+    // Pre-populate modal with last selections
+    setTempDifficulty(difficulty);
+    setTempTopic(topic);
+    setShowSettingsModal(true);
+  }
+
+  /**
+   * Close settings modal without generating
+   * WHY? Allows users to cancel if they change their mind
+   */
+  const closeSettingsModal = () => {
+    setShowSettingsModal(false);
+  }
+
+  /**
+   * Handle "Generate Problem" from settings modal
+   * WHY? Commits selections and triggers problem generation
+   */
+  const handleGenerateFromModal = () => {
+    // Commit temporary selections to actual state
+    setDifficulty(tempDifficulty);
+    setTopic(tempTopic);
+    setShowSettingsModal(false);
+    // Generate problem with new settings
+    generateProblemWithSettings(tempDifficulty, tempTopic);
+  }
+
+  /**
+   * Close modals on Escape key press
    * WHY? Improves UX with keyboard accessibility
    */
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showFeedbackModal) {
-        closeFeedbackModal();
+      if (e.key === 'Escape') {
+        if (showFeedbackModal) {
+          closeFeedbackModal();
+        } else if (showSettingsModal) {
+          closeSettingsModal();
+        }
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [showFeedbackModal]);
+  }, [showFeedbackModal, showSettingsModal]);
 
   /**
-   * Generates a new math problem using AI
+   * Generates a new math problem using AI with specific settings
    *
    * HOW IT WORKS:
    * 1. Makes a POST request to /api/math-problem to generate a new problem
@@ -108,23 +153,26 @@ export default function Home() {
    * - Try-catch for network errors or API failures
    * - Console logging for debugging (visible in browser dev tools)
    * - Loading state automatically cleared on error
-   * - User sees no error message (graceful degradation)
+   * - User-friendly error message displayed
    */
-  const generateProblem = async () => {
+  const generateProblemWithSettings = async (selectedDifficulty: 'easy' | 'medium' | 'hard', selectedTopic: 'addition' | 'subtraction' | 'multiplication' | 'division' | 'random') => {
     // Set loading state to true immediately to prevent multiple rapid clicks
     // WHY? Users might click button multiple times quickly, causing duplicate requests
     setIsLoading(true);
 
     try {
-      // Make API call to generate new problem
+      // Make API call to generate new problem with user preferences
       // WHY POST method? Creating a new resource (problem session)
-      // WHY no request body? AI generates random problems, no parameters needed
+      // WHY send body? User's difficulty and topic preferences customize the problem
       const response = await fetch('/api/math-problem', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // No body needed - AI generates random problems
         },
+        body: JSON.stringify({
+          difficulty: selectedDifficulty,
+          topic: selectedTopic,
+        }),
       });
 
       // Check if the API call was successful
@@ -285,11 +333,11 @@ export default function Home() {
           {!problem && (
             <div className="mb-6">
               <button
-                onClick={generateProblem}
+                onClick={openSettingsModal}
                 disabled={isLoading}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
               >
-                {isLoading ? '✨ Generating...' : '🎲 Generate New Problem'}
+                {isLoading ? '✨ Generating...' : '🎲 New Problem'}
               </button>
             </div>
           )}
@@ -304,9 +352,28 @@ export default function Home() {
           {/* Problem display section */}
           {problem && (
             <div className="border-t-2 border-gray-100 pt-6 mt-6">
-            <h2 className="text-2xl font-bold mb-4 text-transparent bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text">
-              ❓ Problem:
-            </h2>
+            {/* Problem Header with Badges */}
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <h2 className="text-2xl font-bold text-transparent bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text">
+                ❓ Problem:
+              </h2>
+              {/* Difficulty Badge */}
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                difficulty === 'medium' ? 'bg-blue-100 text-blue-700' :
+                'bg-red-100 text-red-700'
+              }`}>
+                {difficulty.toUpperCase()}
+              </span>
+              {/* Topic Badge */}
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
+                {topic === 'addition' ? '➕ Addition' :
+                 topic === 'subtraction' ? '➖ Subtraction' :
+                 topic === 'multiplication' ? '✖️ Multiplication' :
+                 topic === 'division' ? '➗ Division' :
+                 '🎲 Random'}
+              </span>
+            </div>
             <p className="text-lg text-gray-800 leading-relaxed mb-6 font-medium">
               {problem.problem_text}
             </p>
@@ -359,7 +426,7 @@ export default function Home() {
                 
                 <button
                   type="button"
-                  onClick={generateProblem}
+                  onClick={openSettingsModal}
                   disabled={isLoading}
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl disabled:transform-none"
                 >
@@ -447,6 +514,108 @@ export default function Home() {
               }
             }
           `}</style>
+        </>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
+            onClick={closeSettingsModal}
+          ></div>
+
+          {/* Modal Container */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 transform transition-all duration-300 scale-100 border-4 border-blue-400"
+              style={{ animation: 'modalFadeIn 0.3s ease-out' }}
+            >
+              {/* Close button (X) */}
+              <button
+                onClick={closeSettingsModal}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
+                aria-label="Close modal"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {/* Modal Header */}
+              <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
+                ⚙️ Problem Settings
+              </h2>
+
+              {/* Difficulty Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-gray-700 mb-3">
+                  🎚️ Difficulty Level
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {(['easy', 'medium', 'hard'] as const).map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => setTempDifficulty(level)}
+                      className={`flex-1 px-4 py-3 rounded-lg font-semibold transition duration-200 ${
+                        tempDifficulty === level
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Topic Selection */}
+              <div className="mb-8">
+                <label className="block text-sm font-bold text-gray-700 mb-3">
+                  📚 Topic
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: 'addition' as const, icon: '➕', label: 'Addition' },
+                    { key: 'subtraction' as const, icon: '➖', label: 'Subtraction' },
+                    { key: 'multiplication' as const, icon: '✖️', label: 'Multiply' },
+                    { key: 'division' as const, icon: '➗', label: 'Division' },
+                    { key: 'random' as const, icon: '🎲', label: 'Random', fullWidth: true }
+                  ].map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setTempTopic(t.key)}
+                      className={`px-4 py-3 rounded-lg font-semibold transition duration-200 text-sm ${
+                        tempTopic === t.key
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg transform scale-105'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      } ${(t as any).fullWidth ? 'col-span-2' : ''}`}
+                    >
+                      <span className="mr-2">{t.icon}</span>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={handleGenerateFromModal}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl"
+                >
+                  ✨ Generate Problem
+                </button>
+                <button
+                  onClick={closeSettingsModal}
+                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-6 rounded-xl transition duration-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         </>
       )}
     </div>
