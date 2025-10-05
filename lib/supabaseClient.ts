@@ -18,18 +18,21 @@ export type Database = {
           created_at: string
           problem_text: string
           correct_answer: number
+          hint: string | null
         }
         Insert: {
           id?: string
           created_at?: string
           problem_text: string
           correct_answer: number
+          hint?: string
         }
         Update: {
           id?: string
           created_at?: string
           problem_text?: string
           correct_answer?: number
+          hint?: string
         }
       }
       math_problem_submissions: {

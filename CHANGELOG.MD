@@ -40,6 +40,20 @@
   - Fixed error display styling with functional Tailwind utility classes
 
 ### Added
+- **Hint System** - AI-generated hints for student assistance
+  - Added `hint` column to `math_problem_sessions` database table
+  - Updated AI prompt to generate simple, contextual hints with each problem
+  - Implemented hint state management and toggle UI component
+  - Hint button appears only when AI provides a hint (graceful degradation)
+  - Yellow/gold themed hint display for visual differentiation
+  - Hint visibility resets when generating new problem, persists after submission
+  - Updated TypeScript types across database schema, API routes, and frontend
+
+### Fixed
+- **Hint Display Bug** - Fixed hint not appearing in frontend
+  - Added hint field to API response payload (was only saved to database)
+  - Hint now properly passed from backend to frontend for display
+
 - **UX Improvements** - Enhanced error handling and user feedback
   - Added error state management for API failure notifications
   - Implemented user-friendly error messages instead of silent failures

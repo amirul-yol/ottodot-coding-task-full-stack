@@ -81,7 +81,7 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
 
   // Create a detailed prompt for the AI
   // WHY THIS PROMPT? Specifies age group, math level, and exact JSON format needed
-  // NOTE: This is a diagnostic version to troubleshoot AI response issues
+  // NOTE: Now includes hint generation for student assistance
   const prompt = `
     Generate a math word problem suitable for Primary 5 students (10-11 years old).
     The problem should involve basic arithmetic operations like addition, subtraction, multiplication, or division.
@@ -89,13 +89,16 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
 
     CRITICAL REQUIREMENTS:
     - Respond with ONLY a valid JSON object
+    - Include a HELPFUL HINT that guides students without giving away the answer
+    - The hint should be simple and direct, appropriate for 10-11 year olds
     - Do NOT include any explanations, markdown, or extra text
     - Do NOT wrap in code blocks
     - Format MUST be exactly:
 
     {
       "problem_text": "A bakery sold 45 cupcakes in the morning and 32 cupcakes in the afternoon. How many cupcakes did they sell in total?",
-      "final_answer": 77
+      "final_answer": 77,
+      "hint": "Try adding the number of cupcakes sold in the morning to the number sold in the afternoon."
     }
   `;
 
@@ -172,16 +175,25 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
       throw new Error('Invalid AI response format');
     }
 
+    // Validate hint field (optional but log if missing)
+    // WHY? Hints are expected but not critical - we can proceed without them
+    if (!parsedAIResponse.hint) {
+      console.warn('⚠️ AI response missing hint field - hint button will not be shown');
+    }
+
     // If we get here, the AI worked! Log success
     console.log('✅ Successfully generated problem from AI:', parsedAIResponse.problem_text.substring(0, 50) + '...');
+    console.log('💡 Hint provided:', parsedAIResponse.hint ? 'Yes' : 'No');
 
-    // Save the problem to the database
+    // Save the problem to the database (including hint if available)
     // WHY? Persists data for tracking and allows multiple attempts per problem
+    // NOTE: Hint is optional - if AI doesn't provide it, we save NULL
     const { data: session, error: dbError } = await supabase
       .from('math_problem_sessions')
       .insert({
         problem_text: parsedAIResponse.problem_text,
         correct_answer: parsedAIResponse.final_answer,
+        hint: parsedAIResponse.hint || null, // Use null if hint is missing
       })
       .select()
       .single();
@@ -192,12 +204,14 @@ async function handleGenerateProblem(request: Request): Promise<Response> {
       throw new Error(`Failed to save problem: ${dbError.message}`);
     }
 
-    // Return successful response with problem and session ID
+    // Return successful response with problem, hint, and session ID
     // WHY 201 status? Indicates a resource was created successfully
+    // NOTE: Include hint in response so frontend can display it
     const response: GenerateProblemResponse = {
       problem: {
         problem_text: parsedAIResponse.problem_text,
         final_answer: parsedAIResponse.final_answer,
+        hint: parsedAIResponse.hint, // Include hint for frontend display
       },
       sessionId: session.id,
     };

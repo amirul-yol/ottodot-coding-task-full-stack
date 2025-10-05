@@ -5,6 +5,7 @@ import { useState } from 'react'
 interface MathProblem {
   problem_text: string
   final_answer: number
+  hint?: string  // Optional hint from AI - may not always be present
 }
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showHint, setShowHint] = useState(false)
 
   /**
    * Generates a new math problem using AI
@@ -75,6 +77,7 @@ export default function Home() {
       setUserAnswer('');
       setIsCorrect(null);
       setError(null); // Clear any previous errors on successful generation
+      setShowHint(false); // Reset hint visibility for new problem
 
     } catch (error) {
       // Handle any errors during the API call
@@ -206,6 +209,26 @@ export default function Home() {
             <p className="text-lg text-gray-800 leading-relaxed mb-6">
               {problem.problem_text}
             </p>
+
+            {/* Hint Button - Only show if hint is available */}
+            {problem.hint && (
+              <div className="mb-4">
+                {!showHint ? (
+                  <button
+                    onClick={() => setShowHint(true)}
+                    type="button"
+                    className="text-amber-600 hover:text-amber-700 font-medium text-sm flex items-center gap-1"
+                  >
+                    💡 Need Help? Show Hint
+                  </button>
+                ) : (
+                  <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-amber-800 mb-1">💡 Hint</p>
+                    <p className="text-sm text-amber-900">{problem.hint}</p>
+                  </div>
+                )}
+              </div>
+            )}
             
             <form onSubmit={submitAnswer} className="space-y-4">
               <div>
